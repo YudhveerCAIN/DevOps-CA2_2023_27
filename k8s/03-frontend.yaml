@@ -21,8 +21,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: logistics-frontend:v1
-          imagePullPolicy: IfNotPresent
+          image: nginx:alpine
           ports:
             - containerPort: 80
 ---

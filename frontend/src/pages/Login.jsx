@@ -1,6 +1,10 @@
 import React, { useState, useContext } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { AuthContext } from '../context/AuthContext';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const Login = () => {
   const [username, setUsername] = useState('');
@@ -36,53 +40,67 @@ const Login = () => {
   };
 
   return (
-    <div className="login-container">
-      <div className="login-card">
-        <div className="login-header">
-          <h2>LOGISTICS HUB</h2>
-          <p>Warehouse & Logistics Management System</p>
-        </div>
+    <div className="login-container flex items-center justify-center min-h-screen bg-background">
+      <Card className="w-full max-w-[420px] border-border bg-card shadow-2xl p-4">
+        <CardHeader className="text-center pb-6">
+          <CardTitle className="font-outfit text-2xl font-bold tracking-wide text-foreground">
+            LOGISTICS HUB
+          </CardTitle>
+          <CardDescription className="text-muted-foreground text-sm">
+            Warehouse & Logistics Management System
+          </CardDescription>
+        </CardHeader>
 
-        {error && (
-          <div className="alert-danger">
-            <span>{error}</span>
-          </div>
-        )}
+        <CardContent>
+          {error && (
+            <div className="alert-danger mb-6 p-4 rounded-lg bg-red-950/40 border border-red-900/50 text-red-400 text-sm">
+              <span>{error}</span>
+            </div>
+          )}
 
-        <form onSubmit={handleSubmit}>
-          <div className="form-group">
-            <label htmlFor="username">Username</label>
-            <input
-              type="text"
-              id="username"
-              className="form-control"
-              placeholder="e.g. manager"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-2">
+              <Label htmlFor="username" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Username
+              </Label>
+              <Input
+                type="text"
+                id="username"
+                className="bg-accent/40 border-border text-foreground placeholder:text-muted-foreground"
+                placeholder="e.g. manager"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={loading}
+                autoComplete="username"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="password" className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
+                Password
+              </Label>
+              <Input
+                type="password"
+                id="password"
+                className="bg-accent/40 border-border text-foreground placeholder:text-muted-foreground"
+                placeholder="••••••••"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={loading}
+                autoComplete="current-password"
+              />
+            </div>
+
+            <Button
+              type="submit"
+              className="w-full bg-primary hover:bg-primary/95 text-primary-foreground font-semibold"
               disabled={loading}
-              autoComplete="username"
-            />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="password">Password</label>
-            <input
-              type="password"
-              id="password"
-              className="form-control"
-              placeholder="••••••••"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={loading}
-              autoComplete="current-password"
-            />
-          </div>
-
-          <button type="submit" className="btn-primary" disabled={loading}>
-            {loading ? 'Authenticating...' : 'Sign In'}
-          </button>
-        </form>
-      </div>
+            >
+              {loading ? 'Authenticating...' : 'Sign In'}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
     </div>
   );
 };

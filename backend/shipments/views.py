@@ -66,7 +66,7 @@ class DispatchOrderViewSet(viewsets.ModelViewSet):
         
         with transaction.atomic():
             # State Transition: Transitioning to DISPATCHED triggers stock deductions
-            if old_status == 'PENDING' and new_status in ['DISPATCHED', 'IN_TRANSIT']:
+            if old_status == 'PENDING' and new_status in ['DISPATCHED', 'IN_TRANSIT','DELIVERED']:
                 for item in instance.items.all():
                     stock_item = item.stock_item
                     if stock_item.quantity < item.quantity:

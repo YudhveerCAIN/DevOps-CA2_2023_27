@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models import Sum, F
 
 class WarehouseZone(models.Model):
-    code = models.CharField(max_length=10, unique=True)
+    code = models.CharField(max_length=10, unique=True,)
     name = models.CharField(max_length=100)
     max_weight_capacity = models.DecimalField(max_digits=10, decimal_places=2, help_text="Max capacity in kg")
     description = models.TextField(blank=True, null=True)

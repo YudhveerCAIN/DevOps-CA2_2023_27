@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-deployment
+  labels:
+    app: backend
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: backend
+  template:
+    metadata:
+      labels:
+        app: backend
+    spec:
+      containers:
+        - name: backend
+          image: logistics-backend:v1
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: DB_HOST
+              value: db
+            - name: DB_PORT
+              value: "5432"
+            - name: DB_NAME
+              value: logistics_db
+            - name: DB_USER
+              value: postgres
+            - name: DB_PASSWORD
+              value: postgres
+          ports:
+            - containerPort: 8000
+          readinessProbe:
+            httpGet:
+              path: /api/accounts/
+              port: 8000
+            initialDelaySeconds: 15
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /api/accounts/
+              port: 8000
+            initialDelaySeconds: 20
+            periodSeconds: 15
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: backend-service
+spec:
+  type: ClusterIP
+  selector:
+    app: backend
+  ports:
+    - port: 8000
+      targetPort: 8000

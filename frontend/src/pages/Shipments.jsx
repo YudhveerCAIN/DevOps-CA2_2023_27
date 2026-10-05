@@ -1,5 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import api from '../services/api';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const Shipments = () => {
   const [activeTab, setActiveTab] = useState('inbound'); // 'inbound' or 'outbound'
@@ -161,7 +167,6 @@ const Shipments = () => {
       setGrnModalOpen(false);
       fetchData();
     } catch (err) {
-      // Zone weight overload errors will be captured here
       const errorMsg = err.response?.data?.non_field_errors?.[0] || err.response?.data?.grn_number?.[0] || 'Failed to register GRN.';
       setFormError(errorMsg);
     }
@@ -222,298 +227,273 @@ const Shipments = () => {
       setDispatchModalOpen(false);
       fetchData();
     } catch (err) {
-      // Insufficient stock validation will be captured here
       const errorMsg = err.response?.data?.status || err.response?.data?.order_number?.[0] || 'Failed to create Dispatch Order.';
       setFormError(errorMsg);
     }
   };
 
-  // Helper to get delivery logs list
   const handleViewLogs = (logs) => {
     setActiveLogs(logs);
   };
 
   if (loading) {
     return (
-      <div className="loading-container">
+      <div className="loading-container flex flex-col items-center justify-center h-screen bg-background">
         <div className="spinner"></div>
-        <p>Loading shipping logs...</p>
+        <p className="text-muted-foreground text-sm">Loading shipping logs...</p>
       </div>
     );
   }
 
   return (
-    <div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+    <div className="space-y-6">
+      <div className="flex flex-col sm:flex-row justify-between sm:items-center gap-4">
         <div>
-          <h1 style={{ fontFamily: 'Outfit', fontSize: '28px', marginBottom: '4px' }}>Shipments & Shipments Log</h1>
-          <p style={{ color: 'var(--text-secondary)' }}>Track goods receipt notes (inbound) and dispatches (outbound).</p>
+          <h1 className="font-outfit text-3xl font-bold text-foreground">Shipments & Shipments Log</h1>
+          <p className="text-muted-foreground text-sm mt-1">Track goods receipt notes (inbound) and dispatches (outbound).</p>
         </div>
         
         {activeTab === 'inbound' ? (
-          <button className="btn-primary" onClick={openPoModal}>
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-5" onClick={openPoModal}>
             New Purchase Order
-          </button>
+          </Button>
         ) : (
-          <button className="btn-primary" onClick={openDispatchModal}>
+          <Button className="bg-primary hover:bg-primary/90 text-primary-foreground font-semibold px-5" onClick={openDispatchModal}>
             Schedule Dispatch
-          </button>
+          </Button>
         )}
       </div>
 
-      {/* Tabs Selector */}
-      <div style={{ display: 'flex', gap: '8px', borderBottom: '1px solid var(--border-color)', marginBottom: '24px' }}>
-        <button 
-          onClick={() => setActiveTab('inbound')} 
-          style={{
-            padding: '12px 24px',
-            background: 'none',
-            border: 'none',
-            color: activeTab === 'inbound' ? 'var(--text-primary)' : 'var(--text-secondary)',
-            borderBottom: activeTab === 'inbound' ? '2px solid var(--accent-primary)' : 'none',
-            fontWeight: '600',
-            cursor: 'pointer',
-            fontSize: '14.5px'
-          }}
-        >
-          Inbound (Purchase Orders / GRN)
-        </button>
-        <button 
-          onClick={() => setActiveTab('outbound')} 
-          style={{
-            padding: '12px 24px',
-            background: 'none',
-            border: 'none',
-            color: activeTab === 'outbound' ? 'var(--text-primary)' : 'var(--text-secondary)',
-            borderBottom: activeTab === 'outbound' ? '2px solid var(--accent-primary)' : 'none',
-            fontWeight: '600',
-            cursor: 'pointer',
-            fontSize: '14.5px'
-          }}
-        >
-          Outbound (Dispatches)
-        </button>
-      </div>
+      {error && <div className="alert-danger p-4 rounded-lg bg-red-950/40 border border-red-900/50 text-red-400 text-sm">{error}</div>}
 
-      {error && <div className="alert-danger">{error}</div>}
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full space-y-6">
+        <TabsList className="bg-muted border border-border rounded-lg p-1 w-full max-w-[400px] flex gap-1">
+          <TabsTrigger value="inbound" className="flex-1 text-sm font-semibold rounded-md py-2 data-[state=active]:bg-card data-[state=active]:text-foreground text-muted-foreground">
+            Inbound (PO / GRN)
+          </TabsTrigger>
+          <TabsTrigger value="outbound" className="flex-1 text-sm font-semibold rounded-md py-2 data-[state=active]:bg-card data-[state=active]:text-foreground text-muted-foreground">
+            Outbound (Dispatches)
+          </TabsTrigger>
+        </TabsList>
 
-      {/* --- INBOUND TAB (PO / GRN LOGGING) --- */}
-      {activeTab === 'inbound' && (
-        <div className="panel-container" style={{ padding: '24px' }}>
-          <div className="table-responsive">
-            <table className="modern-table">
-              <thead>
-                <tr>
-                  <th>PO Number</th>
-                  <th>Supplier</th>
-                  <th>Order Date</th>
-                  <th>Expected Delivery</th>
-                  <th>Status</th>
-                  <th>Items Ordered</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {pos.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>
-                      No Purchase Orders logged in database.
-                    </td>
-                  </tr>
-                ) : (
-                  pos.map(po => {
-                    const isPending = po.status === 'PENDING';
-                    const isPartial = po.status === 'PARTIAL';
-                    return (
-                      <tr key={po.id}>
-                        <td><strong>{po.po_number}</strong></td>
-                        <td>{po.supplier}</td>
-                        <td>{new Date(po.order_date).toLocaleDateString()}</td>
-                        <td>{po.expected_delivery_date ? new Date(po.expected_delivery_date).toLocaleDateString() : 'N/A'}</td>
-                        <td>
-                          <span className={`status-badge ${
-                            po.status === 'RECEIVED' ? 'success' : 
-                            po.status === 'PARTIAL' ? 'warning' : 'danger'
+        {/* --- INBOUND TAB (PO / GRN LOGGING) --- */}
+        <TabsContent value="inbound">
+          <div className="panel-container border border-border bg-card p-6 rounded-xl space-y-6 shadow-lg">
+            <div className="table-responsive rounded-xl border border-border overflow-hidden">
+              <Table className="w-full text-left border-collapse">
+                <TableHeader className="bg-accent/10 border-b border-border">
+                  <TableRow>
+                    <TableHead className="font-semibold text-xs text-muted-foreground uppercase py-4 px-6">PO Number</TableHead>
+                    <TableHead className="font-semibold text-xs text-muted-foreground uppercase py-4 px-6">Supplier</TableHead>
+                    <TableHead className="font-semibold text-xs text-muted-foreground uppercase py-4 px-6">Order Date</TableHead>
+                    <TableHead className="font-semibold text-xs text-muted-foreground uppercase py-4 px-6">Expected Delivery</TableHead>
+                    <TableHead className="font-semibold text-xs text-muted-foreground uppercase py-4 px-6">Status</TableHead>
+                    <TableHead className="font-semibold text-xs text-muted-foreground uppercase py-4 px-6">Items Ordered</TableHead>
+                    <TableHead className="font-semibold text-xs text-muted-foreground uppercase py-4 px-6 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {pos.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-12 px-6">
+                        No Purchase Orders logged in database.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    pos.map(po => {
+                      const isPending = po.status === 'PENDING';
+                      const isPartial = po.status === 'PARTIAL';
+                      return (
+                        <TableRow key={po.id} className="hover:bg-accent/10 border-b border-border last:border-none">
+                          <TableCell className="font-semibold text-foreground py-4 px-6">{po.po_number}</TableCell>
+                          <TableCell className="text-foreground py-4 px-6">{po.supplier}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm py-4 px-6">{new Date(po.order_date).toLocaleDateString()}</TableCell>
+                          <TableCell className="text-muted-foreground text-sm py-4 px-6">
+                            {po.expected_delivery_date ? new Date(po.expected_delivery_date).toLocaleDateString() : 'N/A'}
+                          </TableCell>
+                          <TableCell className="py-4 px-6">
+                            <span className={`status-badge text-xs font-bold px-2 py-0.5 rounded ${
+                              po.status === 'RECEIVED' ? 'success' : 
+                              po.status === 'PARTIAL' ? 'warning' : 'danger'
+                            }`}>
+                              {po.status}
+                            </span>
+                          </TableCell>
+                          <TableCell className="py-4 px-6">
+                            <div className="text-xs text-muted-foreground space-y-1">
+                              {po.items.map(item => (
+                                <div key={item.id}>{item.stock_item_name} (x{item.quantity_ordered})</div>
+                              ))}
+                            </div>
+                          </TableCell>
+                          <TableCell className="py-4 px-6 text-right">
+                            {(isPending || isPartial) ? (
+                              <Button 
+                                className="bg-primary hover:bg-primary/95 text-primary-foreground font-semibold py-1 px-3 text-xs"
+                                onClick={() => openGrnModal(po)}
+                              >
+                                Log GRN
+                              </Button>
+                            ) : (
+                              <span className="text-xs italic text-muted-foreground">Fulfilled</span>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </div>
+        </TabsContent>
+
+        {/* --- OUTBOUND TAB (DISPATCHES) --- */}
+        <TabsContent value="outbound">
+          <div className="panel-container border border-border bg-card p-6 rounded-xl space-y-6 shadow-lg">
+            <div className="table-responsive rounded-xl border border-border overflow-hidden">
+              <Table className="w-full text-left border-collapse">
+                <TableHeader className="bg-accent/10 border-b border-border">
+                  <TableRow>
+                    <TableHead className="font-semibold text-xs text-muted-foreground uppercase py-4 px-6">Order Number</TableHead>
+                    <TableHead className="font-semibold text-xs text-muted-foreground uppercase py-4 px-6">Destination</TableHead>
+                    <TableHead className="font-semibold text-xs text-muted-foreground uppercase py-4 px-6">Delivery Date</TableHead>
+                    <TableHead className="font-semibold text-xs text-muted-foreground uppercase py-4 px-6">Agent</TableHead>
+                    <TableHead className="font-semibold text-xs text-muted-foreground uppercase py-4 px-6">Status</TableHead>
+                    <TableHead className="font-semibold text-xs text-muted-foreground uppercase py-4 px-6">Items Included</TableHead>
+                    <TableHead className="font-semibold text-xs text-muted-foreground uppercase py-4 px-6 text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {dispatches.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={7} className="text-center text-muted-foreground py-12 px-6">
+                        No dispatches scheduled in database.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    dispatches.map(disp => (
+                      <TableRow key={disp.id} className="hover:bg-accent/10 border-b border-border last:border-none">
+                        <TableCell className="font-semibold text-foreground py-4 px-6">{disp.order_number}</TableCell>
+                        <TableCell className="text-foreground py-4 px-6">{disp.destination}</TableCell>
+                        <TableCell className="py-4 px-6">
+                          {disp.actual_delivery_date ? (
+                            <div className="text-sm">
+                              <span className="text-emerald-500 font-semibold">Delivered: </span>
+                              {new Date(disp.actual_delivery_date).toLocaleDateString()}
+                            </div>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">
+                              <span className="font-semibold text-muted">Expected: </span>
+                              {new Date(disp.expected_delivery_date).toLocaleDateString()}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-4 px-6">
+                          {disp.delivery_agent_detail ? (
+                            <div>
+                              <div className="font-semibold text-foreground">{disp.delivery_agent_detail.username}</div>
+                              <div className="text-[10px] text-muted-foreground">{disp.delivery_agent_detail.phone || 'No Phone'}</div>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-amber-500 font-semibold italic">Unassigned</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="py-4 px-6">
+                          <span className={`status-badge text-xs font-bold px-2 py-0.5 rounded ${
+                            disp.status === 'DELIVERED' ? 'success' : 
+                            disp.status === 'FAILED' ? 'danger' : 
+                            disp.status === 'PENDING' ? 'danger' : 'warning'
                           }`}>
-                            {po.status}
+                            {disp.status.replace('_', ' ')}
                           </span>
-                        </td>
-                        <td>
-                          <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-                            {po.items.map(item => (
-                              <div key={item.id}>{item.stock_item_name} (x{item.quantity_ordered})</div>
+                        </TableCell>
+                        <TableCell className="py-4 px-6">
+                          <div className="text-xs text-muted-foreground space-y-1">
+                            {disp.items.map(item => (
+                              <div key={item.id}>{item.stock_item_name} (x{item.quantity})</div>
                             ))}
                           </div>
-                        </td>
-                        <td style={{ textAlign: 'right' }}>
-                          {(isPending || isPartial) ? (
-                            <button 
-                              className="btn-primary" 
-                              style={{ padding: '6px 12px', fontSize: '12px' }}
-                              onClick={() => openGrnModal(po)}
-                            >
-                              Log GRN
-                            </button>
-                          ) : (
-                            <span style={{ fontSize: '13px', fontStyle: 'italic', color: 'var(--text-muted)' }}>Fulfilled</span>
-                          )}
-                        </td>
-                      </tr>
-                    );
-                  })
-                )}
-              </tbody>
-            </table>
+                        </TableCell>
+                        <TableCell className="py-4 px-6 text-right">
+                          <Button 
+                            variant="outline" 
+                            className="bg-accent border-border hover:bg-accent/80 text-foreground font-semibold py-1 px-3 text-xs"
+                            onClick={() => handleViewLogs(disp.status_logs)}
+                          >
+                            Audit Logs
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
           </div>
-        </div>
-      )}
-
-      {/* --- OUTBOUND TAB (DISPATCHES) --- */}
-      {activeTab === 'outbound' && (
-        <div className="panel-container" style={{ padding: '24px' }}>
-          <div className="table-responsive">
-            <table className="modern-table">
-              <thead>
-                <tr>
-                  <th>Order Number</th>
-                  <th>Destination</th>
-                  <th>Delivery Date</th>
-                  <th>Agent</th>
-                  <th>Status</th>
-                  <th>Items Included</th>
-                  <th style={{ textAlign: 'right' }}>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {dispatches.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '40px' }}>
-                      No dispatches scheduled in database.
-                    </td>
-                  </tr>
-                ) : (
-                  dispatches.map(disp => (
-                    <tr key={disp.id}>
-                      <td><strong>{disp.order_number}</strong></td>
-                      <td>{disp.destination}</td>
-                      <td>
-                        {disp.actual_delivery_date ? (
-                          <div style={{ fontSize: '13px' }}>
-                            <span style={{ color: 'var(--accent-success)' }}>Delivered: </span>
-                            {new Date(disp.actual_delivery_date).toLocaleDateString()}
-                          </div>
-                        ) : (
-                          <div style={{ fontSize: '13px', color: 'var(--text-secondary)' }}>
-                            <span>Expected: </span>
-                            {new Date(disp.expected_delivery_date).toLocaleDateString()}
-                          </div>
-                        )}
-                      </td>
-                      <td>
-                        {disp.delivery_agent_detail ? (
-                          <div>
-                            <div><strong>{disp.delivery_agent_detail.username}</strong></div>
-                            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>{disp.delivery_agent_detail.phone || 'No Phone'}</div>
-                          </div>
-                        ) : (
-                          <span style={{ color: 'var(--accent-warning)', fontStyle: 'italic' }}>Unassigned</span>
-                        )}
-                      </td>
-                      <td>
-                        <span className={`status-badge ${
-                          disp.status === 'DELIVERED' ? 'success' : 
-                          disp.status === 'FAILED' ? 'danger' : 
-                          disp.status === 'PENDING' ? 'danger' : 'warning'
-                        }`}>
-                          {disp.status.replace('_', ' ')}
-                        </span>
-                      </td>
-                      <td>
-                        <div style={{ fontSize: '12.5px', color: 'var(--text-secondary)' }}>
-                          {disp.items.map(item => (
-                            <div key={item.id}>{item.stock_item_name} (x{item.quantity})</div>
-                          ))}
-                        </div>
-                      </td>
-                      <td style={{ textAlign: 'right' }}>
-                        <button 
-                          className="btn-secondary" 
-                          style={{ padding: '6px 12px', fontSize: '12px' }}
-                          onClick={() => handleViewLogs(disp.status_logs)}
-                        >
-                          Audit Logs
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+        </TabsContent>
+      </Tabs>
 
       {/* --- ADD NEW PURCHASE ORDER MODAL --- */}
-      {poModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '550px' }}>
-            <div className="modal-header">
-              <h3>Create Purchase Order</h3>
-              <button className="modal-close-btn" onClick={() => setPoModalOpen(false)}>×</button>
-            </div>
+      <Dialog open={poModalOpen} onOpenChange={setPoModalOpen}>
+        <DialogContent className="bg-card border-border text-foreground max-w-[550px] p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-outfit text-xl font-bold">Create Purchase Order</DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleSavePo} className="space-y-4">
+            {formError && <div className="alert-danger p-3 rounded bg-red-950/40 border border-red-900/50 text-red-400 text-xs">{formError}</div>}
             
-            <form onSubmit={handleSavePo}>
-              <div className="modal-body" style={{ maxHeight: '60vh' }}>
-                {formError && <div className="alert-danger">{formError}</div>}
-                
-                <div className="form-group">
-                  <label htmlFor="po-no">PO Number</label>
-                  <input 
-                    type="text" 
-                    id="po-no" 
-                    className="form-control" 
-                    value={poNumber}
-                    onChange={(e) => setPoNumber(e.target.value)}
-                    required
-                  />
-                </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="po-no" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">PO Number</Label>
+              <Input 
+                type="text" 
+                id="po-no" 
+                className="bg-accent/40 border-border" 
+                value={poNumber}
+                onChange={(e) => setPoNumber(e.target.value)}
+                required
+              />
+            </div>
 
-                <div className="form-group">
-                  <label htmlFor="po-supp">Supplier Name</label>
-                  <input 
-                    type="text" 
-                    id="po-supp" 
-                    className="form-control" 
-                    placeholder="e.g. Apex Supplier Ltd"
-                    value={poSupplier}
-                    onChange={(e) => setPoSupplier(e.target.value)}
-                    required
-                  />
-                </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="po-supp" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Supplier Name</Label>
+              <Input 
+                type="text" 
+                id="po-supp" 
+                className="bg-accent/40 border-border" 
+                placeholder="e.g. Apex Supplier Ltd"
+                value={poSupplier}
+                onChange={(e) => setPoSupplier(e.target.value)}
+                required
+              />
+            </div>
 
-                <div className="form-group">
-                  <label htmlFor="po-date">Expected Delivery Date</label>
-                  <input 
-                    type="date" 
-                    id="po-date" 
-                    className="form-control" 
-                    value={poExpectedDate}
-                    onChange={(e) => setPoExpectedDate(e.target.value)}
-                  />
-                </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="po-date" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Expected Delivery Date</Label>
+              <Input 
+                type="date" 
+                id="po-date" 
+                className="bg-accent/40 border-border" 
+                value={poExpectedDate}
+                onChange={(e) => setPoExpectedDate(e.target.value)}
+              />
+            </div>
 
-                <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>PO Item List</label>
-                    <button type="button" className="btn-secondary" style={{ padding: '4px 10px', fontSize: '12px' }} onClick={addPoItemRow}>
-                      Add Item
-                    </button>
-                  </div>
+            <div className="pt-4 border-t border-border space-y-4">
+              <div className="flex justify-between items-center">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">PO Item List</Label>
+                <Button type="button" variant="outline" className="bg-accent border-border hover:bg-accent/80 text-foreground py-1 px-3 h-8 text-xs font-semibold" onClick={addPoItemRow}>
+                  Add Item
+                </Button>
+              </div>
 
-                  {poItems.map((item, idx) => (
-                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+              <div className="space-y-3 max-h-[160px] overflow-y-auto pr-1">
+                {poItems.map((item, idx) => (
+                  <div key={idx} className="grid grid-cols-6 gap-2.5 items-center">
+                    <div className="col-span-3">
                       <select
-                        className="form-control"
+                        className="bg-accent/40 border border-border text-foreground rounded p-2 text-sm w-full"
                         value={item.stock_item}
                         onChange={(e) => handlePoItemChange(idx, 'stock_item', e.target.value)}
                         required
@@ -521,198 +501,204 @@ const Shipments = () => {
                         <option value="">Select Item...</option>
                         {stockItems.map(si => <option key={si.id} value={si.id}>{si.sku} - {si.name}</option>)}
                       </select>
+                    </div>
 
-                      <input
+                    <div className="col-span-2">
+                      <Input
                         type="number"
-                        className="form-control"
+                        className="bg-accent/40 border-border h-9"
                         min="1"
                         placeholder="Qty"
                         value={item.quantity_ordered}
                         onChange={(e) => handlePoItemChange(idx, 'quantity_ordered', e.target.value)}
                         required
                       />
+                    </div>
 
+                    <div className="col-span-1 text-center">
                       {poItems.length > 1 && (
-                        <button type="button" className="icon-button delete" title="Delete" onClick={() => removePoItemRow(idx)}>
-                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                        </button>
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" title="Delete" onClick={() => removePoItemRow(idx)}>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </Button>
                       )}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
+            </div>
 
-              <div className="modal-footer">
-                <button type="button" className="btn-secondary" onClick={() => setPoModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn-primary">Generate PO</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <DialogFooter className="pt-4 border-t border-border gap-2">
+              <Button type="button" variant="outline" className="bg-accent border-border hover:bg-accent/80 text-foreground" onClick={() => setPoModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-primary text-primary-foreground font-semibold">
+                Generate PO
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* --- LOG GOODS RECEIPT NOTE (GRN) MODAL --- */}
-      {grnModalOpen && selectedPo && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '550px' }}>
-            <div className="modal-header">
-              <h3>Log Goods Receipt Note (GRN)</h3>
-              <button className="modal-close-btn" onClick={() => setGrnModalOpen(false)}>×</button>
-            </div>
+      <Dialog open={grnModalOpen} onOpenChange={setGrnModalOpen}>
+        <DialogContent className="bg-card border-border text-foreground max-w-[550px] p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-outfit text-xl font-bold">Log Goods Receipt Note (GRN)</DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleSaveGrn} className="space-y-4">
+            {formError && <div className="alert-danger p-3 rounded bg-red-950/40 border border-red-900/50 text-red-400 text-xs whitespace-pre-line">{formError}</div>}
             
-            <form onSubmit={handleSaveGrn}>
-              <div className="modal-body" style={{ maxHeight: '60vh' }}>
-                {formError && <div className="alert-danger" style={{ whiteSpace: 'pre-line' }}>{formError}</div>}
-                
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.5fr', gap: '16px', marginBottom: '16px' }}>
-                  <div>
-                    <label style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Purchase Order</label>
-                    <div style={{ fontWeight: '700', fontSize: '15px' }}>{selectedPo.po_number}</div>
-                  </div>
-                  <div>
-                    <label style={{ fontSize: '11px', textTransform: 'uppercase', color: 'var(--text-secondary)' }}>Supplier</label>
-                    <div style={{ fontSize: '14px' }}>{selectedPo.supplier}</div>
-                  </div>
-                </div>
+            <div className="grid grid-cols-2 gap-4 pb-3 border-b border-border">
+              <div>
+                <Label className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider">Purchase Order</Label>
+                <div className="font-bold text-foreground mt-0.5">{selectedPo?.po_number}</div>
+              </div>
+              <div>
+                <Label className="text-[10px] uppercase text-muted-foreground font-semibold tracking-wider">Supplier</Label>
+                <div className="text-foreground mt-0.5">{selectedPo?.supplier}</div>
+              </div>
+            </div>
 
-                <div className="form-group">
-                  <label htmlFor="grn-no">GRN Reference Number</label>
-                  <input 
-                    type="text" 
-                    id="grn-no" 
-                    className="form-control" 
-                    value={grnNumber}
-                    onChange={(e) => setGrnNumber(e.target.value)}
-                    required
-                  />
-                </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="grn-no" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">GRN Reference Number</Label>
+              <Input 
+                type="text" 
+                id="grn-no" 
+                className="bg-accent/40 border-border" 
+                value={grnNumber}
+                onChange={(e) => setGrnNumber(e.target.value)}
+                required
+              />
+            </div>
 
-                <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-                  <label style={{ display: 'block', fontSize: '12px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase', marginBottom: '12px' }}>
-                    Confirm Received Quantities
-                  </label>
-
-                  {grnItems.map((item, idx) => (
-                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2.5fr 1fr', gap: '16px', alignItems: 'center', marginBottom: '12px', backgroundColor: 'rgba(255,255,255,0.01)', padding: '10px', borderRadius: '8px', border: '1px solid var(--border-color)' }}>
-                      <div>
-                        <div style={{ fontWeight: '600', fontSize: '13.5px' }}>{item.stock_item_name}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>SKU: {item.stock_item_sku}</div>
-                      </div>
-                      
-                      <div className="form-group" style={{ marginBottom: 0 }}>
-                        <input
-                          type="number"
-                          className="form-control"
-                          min="0"
-                          value={item.quantity_received}
-                          onChange={(e) => handleGrnItemChange(idx, e.target.value)}
-                          required
-                        />
-                      </div>
+            <div className="pt-4 border-t border-border space-y-3">
+              <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Confirm Received Quantities</Label>
+              
+              <div className="space-y-3 max-h-[160px] overflow-y-auto pr-1">
+                {grnItems.map((item, idx) => (
+                  <div key={idx} className="flex justify-between items-center p-3 bg-accent/10 border border-border/80 rounded-lg">
+                    <div>
+                      <div className="font-semibold text-sm text-foreground">{item.stock_item_name}</div>
+                      <div className="text-[10px] text-muted-foreground">SKU: {item.stock_item_sku}</div>
                     </div>
-                  ))}
-                </div>
+                    
+                    <div className="w-[100px]">
+                      <Input
+                        type="number"
+                        className="bg-accent/40 border-border h-9"
+                        min="0"
+                        value={item.quantity_received}
+                        onChange={(e) => handleGrnItemChange(idx, e.target.value)}
+                        required
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
+            </div>
 
-              <div className="modal-footer">
-                <button type="button" className="btn-secondary" onClick={() => setGrnModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn-primary">Register Receipt</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <DialogFooter className="pt-4 border-t border-border gap-2">
+              <Button type="button" variant="outline" className="bg-accent border-border hover:bg-accent/80 text-foreground" onClick={() => setGrnModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-primary text-primary-foreground font-semibold">
+                Register Receipt
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
 
       {/* --- CREATE OUTBOUND DISPATCH ORDER MODAL --- */}
-      {dispatchModalOpen && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '550px' }}>
-            <div className="modal-header">
-              <h3>Create Outbound Dispatch</h3>
-              <button className="modal-close-btn" onClick={() => setDispatchModalOpen(false)}>×</button>
-            </div>
+      <Dialog open={dispatchModalOpen} onOpenChange={setDispatchModalOpen}>
+        <DialogContent className="bg-card border-border text-foreground max-w-[550px] p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-outfit text-xl font-bold">Create Outbound Dispatch</DialogTitle>
+          </DialogHeader>
+          
+          <form onSubmit={handleSaveDispatch} className="space-y-4">
+            {formError && <div className="alert-danger p-3 rounded bg-red-950/40 border border-red-900/50 text-red-400 text-xs whitespace-pre-line">{formError}</div>}
             
-            <form onSubmit={handleSaveDispatch}>
-              <div className="modal-body" style={{ maxHeight: '60vh' }}>
-                {formError && <div className="alert-danger" style={{ whiteSpace: 'pre-line' }}>{formError}</div>}
-                
-                <div className="form-group">
-                  <label htmlFor="disp-no">Dispatch Order Number</label>
-                  <input 
-                    type="text" 
-                    id="disp-no" 
-                    className="form-control" 
-                    value={dispNumber}
-                    onChange={(e) => setDispNumber(e.target.value)}
-                    required
-                  />
-                </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="disp-no" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Dispatch Order Number</Label>
+              <Input 
+                type="text" 
+                id="disp-no" 
+                className="bg-accent/40 border-border" 
+                value={dispNumber}
+                onChange={(e) => setDispNumber(e.target.value)}
+                required
+              />
+            </div>
 
-                <div className="form-group">
-                  <label htmlFor="disp-dest">Destination Address</label>
-                  <input 
-                    type="text" 
-                    id="disp-dest" 
-                    className="form-control" 
-                    placeholder="e.g. Retail Store #10, Los Angeles"
-                    value={dispDestination}
-                    onChange={(e) => setDispDestination(e.target.value)}
-                    required
-                  />
-                </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="disp-dest" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Destination Address</Label>
+              <Input 
+                type="text" 
+                id="disp-dest" 
+                className="bg-accent/40 border-border" 
+                placeholder="e.g. Retail Store #10, Los Angeles"
+                value={dispDestination}
+                onChange={(e) => setDispDestination(e.target.value)}
+                required
+              />
+            </div>
 
-                <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr', gap: '16px' }}>
-                  <div className="form-group">
-                    <label htmlFor="disp-date">Expected Delivery Date</label>
-                    <input 
-                      type="date" 
-                      id="disp-date" 
-                      className="form-control" 
-                      value={dispExpectedDate}
-                      onChange={(e) => setDispExpectedDate(e.target.value)}
-                      required
-                    />
-                  </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label htmlFor="disp-date" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Expected Delivery Date</Label>
+                <Input 
+                  type="date" 
+                  id="disp-date" 
+                  className="bg-accent/40 border-border" 
+                  value={dispExpectedDate}
+                  onChange={(e) => setDispExpectedDate(e.target.value)}
+                  required
+                />
+              </div>
 
-                  <div className="form-group">
-                    <label htmlFor="disp-agent">Assign Delivery Agent</label>
-                    <select
-                      id="disp-agent"
-                      className="form-control"
-                      value={dispAgent}
-                      onChange={(e) => setDispAgent(e.target.value)}
-                    >
-                      <option value="">Unassigned</option>
-                      {agents.map(a => <option key={a.id} value={a.id}>{a.username} ({a.phone || 'No Phone'})</option>)}
-                    </select>
-                  </div>
-                </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="disp-agent" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Assign Delivery Agent</Label>
+                <select
+                  id="disp-agent"
+                  className="bg-accent/40 border border-border text-foreground rounded p-2.5 text-sm w-full"
+                  value={dispAgent}
+                  onChange={(e) => setDispAgent(e.target.value)}
+                >
+                  <option value="">Unassigned</option>
+                  {agents.map(a => <option key={a.id} value={a.id}>{a.username} ({a.phone || 'No Phone'})</option>)}
+                </select>
+              </div>
+            </div>
 
-                <div className="form-group">
-                  <label htmlFor="disp-stat">Initial Status</label>
-                  <select
-                    id="disp-stat"
-                    className="form-control"
-                    value={dispStatus}
-                    onChange={(e) => setDispStatus(e.target.value)}
-                  >
-                    <option value="PENDING">Pending Assignment</option>
-                    <option value="DISPATCHED">Dispatched (Subtracts Stock Immediately)</option>
-                  </select>
-                </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="disp-stat" className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Initial Status</Label>
+              <select
+                id="disp-stat"
+                className="bg-accent/40 border border-border text-foreground rounded p-2.5 text-sm w-full"
+                value={dispStatus}
+                onChange={(e) => setDispStatus(e.target.value)}
+              >
+                <option value="PENDING">Pending Assignment</option>
+                <option value="DISPATCHED">Dispatched (Subtracts Stock Immediately)</option>
+              </select>
+            </div>
 
-                <div style={{ marginTop: '20px', borderTop: '1px solid var(--border-color)', paddingTop: '16px' }}>
-                  <div style={{ display: 'flex', justifycontent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-                    <label style={{ fontSize: '12.5px', fontWeight: '600', color: 'var(--text-secondary)', textTransform: 'uppercase' }}>Items to Ship</label>
-                    <button type="button" className="btn-secondary" style={{ padding: '4px 10px', fontSize: '12px' }} onClick={addDispItemRow}>
-                      Add Item
-                    </button>
-                  </div>
+            <div className="pt-4 border-t border-border space-y-4">
+              <div className="flex justify-between items-center">
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground font-semibold">Items to Ship</Label>
+                <Button type="button" variant="outline" className="bg-accent border-border hover:bg-accent/80 text-foreground py-1 px-3 h-8 text-xs font-semibold" onClick={addDispItemRow}>
+                  Add Item
+                </Button>
+              </div>
 
-                  {dispItems.map((item, idx) => (
-                    <div key={idx} style={{ display: 'grid', gridTemplateColumns: '2fr 1fr auto', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
+              <div className="space-y-3 max-h-[160px] overflow-y-auto pr-1">
+                {dispItems.map((item, idx) => (
+                  <div key={idx} className="grid grid-cols-6 gap-2.5 items-center">
+                    <div className="col-span-3">
                       <select
-                        className="form-control"
+                        className="bg-accent/40 border border-border text-foreground rounded p-2 text-sm w-full"
                         value={item.stock_item}
                         onChange={(e) => handleDispItemChange(idx, 'stock_item', e.target.value)}
                         required
@@ -724,76 +710,86 @@ const Shipments = () => {
                           </option>
                         ))}
                       </select>
+                    </div>
 
-                      <input
+                    <div className="col-span-2">
+                      <Input
                         type="number"
-                        className="form-control"
+                        className="bg-accent/40 border-border h-9"
                         min="1"
                         placeholder="Qty"
                         value={item.quantity}
                         onChange={(e) => handleDispItemChange(idx, 'quantity', e.target.value)}
                         required
                       />
+                    </div>
 
+                    <div className="col-span-1 text-center">
                       {dispItems.length > 1 && (
-                        <button type="button" className="icon-button delete" title="Delete" onClick={() => removeDispItemRow(idx)}>
-                          <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-                        </button>
+                        <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" title="Delete" onClick={() => removeDispItemRow(idx)}>
+                          <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </Button>
                       )}
                     </div>
-                  ))}
-                </div>
+                  </div>
+                ))}
               </div>
+            </div>
 
-              <div className="modal-footer">
-                <button type="button" className="btn-secondary" onClick={() => setDispatchModalOpen(false)}>Cancel</button>
-                <button type="submit" className="btn-primary">Generate Order</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+            <DialogFooter className="pt-4 border-t border-border gap-2">
+              <Button type="button" variant="outline" className="bg-accent border-border hover:bg-accent/80 text-foreground" onClick={() => setDispatchModalOpen(false)}>
+                Cancel
+              </Button>
+              <Button type="submit" className="bg-primary text-primary-foreground font-semibold">
+                Generate Order
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+
       {/* Audit Logs Timeline Modal */}
-      {activeLogs && (
-        <div className="modal-overlay">
-          <div className="modal-content" style={{ maxWidth: '500px' }}>
-            <div className="modal-header">
-              <h3>Delivery Status Logs</h3>
-              <button className="modal-close-btn" onClick={() => setActiveLogs(null)}>×</button>
-            </div>
-            <div className="modal-body" style={{ maxHeight: '60vh' }}>
-              {activeLogs.length === 0 ? (
-                <p style={{ color: 'var(--text-secondary)', textAlign: 'center' }}>No status logs recorded.</p>
-              ) : (
-                <div className="timeline">
-                  {activeLogs.map((log) => (
-                    <div key={log.id} className="timeline-item">
-                      <div className="timeline-dot"></div>
-                      <div className="timeline-content">
-                        <div className="timeline-header">
-                          <span className={`status-badge ${
-                            log.status === 'DELIVERED' ? 'success' :
-                            log.status === 'FAILED' ? 'danger' :
-                            log.status === 'PENDING' ? 'danger' : 'warning'
-                          }`}>
-                            {log.status.replace('_', ' ')}
-                          </span>
-                          <span className="timeline-time">{new Date(log.timestamp).toLocaleString()}</span>
-                        </div>
-                        <p className="timeline-notes">{log.notes || 'No comments.'}</p>
-                        <div className="timeline-user">Updated by: {log.updated_by_username}</div>
+      <Dialog open={!!activeLogs} onOpenChange={() => setActiveLogs(null)}>
+        <DialogContent className="bg-card border-border text-foreground max-w-[500px] p-6 shadow-2xl">
+          <DialogHeader>
+            <DialogTitle className="font-outfit text-xl font-bold">Delivery Status Logs</DialogTitle>
+          </DialogHeader>
+          
+          <div className="modal-body max-h-[60vh] overflow-y-auto pr-1 py-4">
+            {!activeLogs || activeLogs.length === 0 ? (
+              <p className="text-muted-foreground text-sm text-center">No status logs recorded.</p>
+            ) : (
+              <div className="timeline">
+                {activeLogs.map((log) => (
+                  <div key={log.id} className="timeline-item">
+                    <div className="timeline-dot"></div>
+                    <div className="timeline-content bg-accent/10 border border-border p-4 rounded-xl space-y-3">
+                      <div className="timeline-header flex justify-between items-center">
+                        <span className={`status-badge text-[10px] font-bold px-2 py-0.5 rounded ${
+                          log.status === 'DELIVERED' ? 'success' :
+                          log.status === 'FAILED' ? 'danger' :
+                          log.status === 'PENDING' ? 'danger' : 'warning'
+                        }`}>
+                          {log.status.replace('_', ' ')}
+                        </span>
+                        <span className="timeline-time text-[10px] text-muted-foreground">{new Date(log.timestamp).toLocaleString()}</span>
                       </div>
+                      <p className="timeline-notes text-sm text-foreground font-normal">{log.notes || 'No comments.'}</p>
+                      <div className="timeline-user text-[10px] text-muted-foreground font-semibold">Updated by: {log.updated_by_username}</div>
                     </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="modal-footer">
-              <button className="btn-secondary" onClick={() => setActiveLogs(null)}>Close</button>
-            </div>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
-        </div>
-      )}
+          
+          <DialogFooter className="pt-4 border-t border-border">
+            <Button variant="outline" className="bg-accent border-border hover:bg-accent/80 text-foreground" onClick={() => setActiveLogs(null)}>
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

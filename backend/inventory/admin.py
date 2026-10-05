@@ -1,3 +1,5 @@
 from django.contrib import admin
+from .models import WarehouseZone, StockItem
 
-# Register your models here.
+admin.site.register(WarehouseZone)
+admin.site.register(StockItem)

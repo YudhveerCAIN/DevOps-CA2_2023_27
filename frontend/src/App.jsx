@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard';
 import Inventory from './pages/Inventory';
 import Shipments from './pages/Shipments';
 import Deliveries from './pages/Deliveries';
+import UserManagement from './pages/UserManagement';
 import Unauthorized from './pages/Unauthorized';
 
 // Layout wrapper to render Sidebar next to content
@@ -73,6 +74,17 @@ function App() {
               <ProtectedRoute allowedRoles={['ADMIN', 'MANAGER']}>
                 <AppLayout>
                   <Deliveries />
+                </AppLayout>
+              </ProtectedRoute>
+            }
+          />
+
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute allowedRoles={['ADMIN']}>
+                <AppLayout>
+                  <UserManagement />
                 </AppLayout>
               </ProtectedRoute>
             }

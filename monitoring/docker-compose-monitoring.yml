@@ -16,6 +16,14 @@ services:
     environment:
       - GF_SECURITY_ADMIN_USER=admin
       - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_INSTALL_PLUGINS=grafana-image-renderer
     depends_on:
       - prometheus
+    restart: always
+
+  node-exporter:
+    image: prom/node-exporter:latest
+    container_name: logistics_node_exporter
+    ports:
+      - "9100:9100"
     restart: always

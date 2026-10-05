@@ -48,9 +48,22 @@ jobs:
           npm ci
           npm run build
 
+  test-ansible:
+    name: Ansible Playbook Syntax Check
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Install Ansible
+        run: sudo apt-get update && sudo apt-get install -y ansible
+
+      - name: Run Ansible Syntax Check
+        run: ansible-playbook -i ansible/inventory.ini ansible/playbook.yml --syntax-check
+
   build-and-push-docker:
     name: Build & Push Docker Images
-    needs: [test-backend, test-frontend]
+    needs: [test-backend, test-frontend, test-ansible]
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
     steps:
